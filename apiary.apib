@@ -1,80 +1,1634 @@
 FORMAT: v1
-HOST: http://polls.apiblueprint.org/
 
-# NFeServer
+# 4allNFe
 
-dfalsfaçlsf jaçlsf jasf 
+O 4allNFe é um projeto que visa oferecer um sistema online capaz de receber uma mensagem padrão e converter em uma nota fiscal autorizada pela SEFAZ, bem como manter uma cópia segura dos documentos autorizados, além de oferecer uma interface web que permita ao usuário fazer as devidas manutenções das suas notas fiscais.
 
-## Questions Collection [/questions]
+Esta API destina-se a permitir a integração com a interface WEB e também com qualquer PDV/ERP que venha a utiliar o nosso serviço.
 
-### List All Questions [GET]
+# Group Definições
+
+###### Permissões:
++ 1 = Configurar dados do estabelecimento comercial
++ 2 = Cadastrar usuários
++ 3 = Configurar série de documentos
++ 4 = Definir numeração atual da série de documento fiscal
++ 5 = Sincronizar NFe com a SEFAZ
++ 6 = Cancelar/Inutilizar nota fiscal
++ 7 = Fazer upload manual de notas fiscais
++ 8 = Inutilizar faixa de numeração
++ 9 = Emitir carta de correção
++ 10 = Editar documento fiscal
++ 11 = Visualizar log de alterações
++ 12 = Emitir notas fiscais via integração de sistemas
+
+# Group Estabelecimento Comercial
+
+Os métodos abaixo destinam-se a criação e manutenção dos cadastros de estabelecimentos comerciais usuários do sistema.
+
+## Cadastrar novo EC [/4allNFe/store/newEntity]
+
+### newEntity[POST]
+Este método oferece um meio através do qual os estabelecimentos comerciais podem se auto cadastrar e começar a utilizar o sistema, sem nenhuma necessidade de contatar a 4all.
+Os mínimos dados requeridos para que um EC faça o seu cadastro são obviamente insuficientes para se emitir uma nota fiscal, mas a intenção é apenas que o EC possa fazer o seu cadastro e receber as credenciais de acesso, podendo assim entrar no sistema e navegar nas suas funcionalidades, sendo que quando uma configuração for necessária o usuário deverá ser notificado e convidado a preencher as configurações faltantes.
+
+###### Regras:
++ Validar o CNPJ informado (ver cálculo do digito verificador)
++ Verificar status do CNPJ
+  + Se estiver cadastrado e ativo:
+        
+        Quer dizer que o EC já acessou o sistem pelo menos uma vez e já tem as credenciais de acesso. Retornar status de erro com mensagem adequada.
+        
+  + Se estiver cadastrado mas não ativo:
+  
+        Quer dizer que o EC já fez o seu cadastro mas nunca acessou o sistema. Pode ser que esqueceu a senha, não recebeu o email de confirmação, etc. Nesse caso, atualizar o cadastro com os novos dados informados e proceder normalmente.
+        
+  + Se não estiver cadastrado:
+  
+        Proceder normalmente.
+        
++ Ver regras de criação de schemas (a implementar)
+  
+        Usar schema default
+        
++ Criar uma nova entrada na tabela de estabelecimentos comerciais 
++ Impedir a duplicidade de logins
++ Criar usuáario padrão "admin", com todos os direitos disponíveis
++ Criar link de ativação e enviar pro email informado
+        
++ Request (application/json)
+            
+    + Body
+    
+            {
+                "corporateName": "4all Tecnologia",
+                "login": "4all",
+                "cnpj": "23.483.494/0001-08",
+                "phone": "(51) 3021-2350",
+                "email": "contato@4all.com"
+            }
+            
+    
++ Response 200 (application/json)
+
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }
+
+## Buscar dados de um EC [/4allNFe/store/findOne]
+
+### findOne[GET]
+
+Método utilizado para buscar os dados completos de um EC. O EC em questão é identificado pelo código encriptado no hash de autorização. A intenção é que esse método seja utilizado somente dentro do sistema, após o login. Se o usuário foi capaz de logar no sistema significa que o EC está ativo e funcionando, então não há necessidade de maiores testes.
+
+###### Regras:
++ Obter o código do EC através do hash de autorização no header da chamada HTTP.
+
++ Request
+
+    + Headers
+            
+            authorization: código hash de autorização que identifica o EC (gerado no momento do login)        
 
 + Response 200 (application/json)
 
-        [
+    + Body
+            
             {
-                "question": "Favourite programming language?",
-                "published_at": "2015-08-05T08:40:51.620Z",
-                "choices": [
-                    {
-                        "choice": "Swift",
-                        "votes": 2048
-                    }, {
-                        "choice": "Python",
-                        "votes": 1024
-                    }, {
-                        "choice": "Objective-C",
-                        "votes": 512
-                    }, {
-                        "choice": "Ruby",
-                        "votes": 256
-                    }
-                ]
+                "corporateName": "4all Tecnologia",
+                "fantasy": "4all",
+                "cnpj": "23.483.494/0001-08", 
+                "ie": "654456468484",
+                "im": "54654",
+                "cnae": "6546454",
+                "idCity": 12346,
+                "neighborhood": "Bela Vista",
+                "street": "Furriel Luíz Antônio de Vargas",
+                "number": "250",
+                "complement": "Sala 1302",
+                "cep": "90470-130",
+                "email": "contato@4all.com",
+                "phone": "(51) 3021-2350",
+                "crt": "1",
+                "csc": "6031F6AF-2C4C-41F2-ACD5-D7E7781E15FA",
+                "token": 1,
+                "certificate_validity": "31/12/2016",
             }
-        ]
+            
++ Response 204 (application/json)
+    
++ Response 500 (application/json)
 
-### Create a New Question [POST]
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }        
 
-You may create your own question using this action. It takes a JSON
-object containing a question and a collection of answers in the
-form of choices.
+## Atualizar cadastro [/4allNFe/store/updateEntity]
+
+### updateEntity[PUT]
+                
+Método utilizado para atualizar os dados cadastrais do EC. 
+
+###### Regras:
+
++ Obter o código do EC através do hash de autorização no header da chamada HTTP.
++ Validar o preenchimento dos campos
 
 + Request (application/json)
 
-        {
-            "question": "Favourite programming language?",
-            "choices": [
-                "Swift",
-                "Python",
-                "Objective-C",
-                "Ruby"
-            ]
-        }
-
-+ Response 201 (application/json)
-
     + Headers
-
-            Location: /questions/2
+            
+            authorization: código hash de autorização que identifica o EC (gerado no momento do login)
 
     + Body
-
+            
             {
-                "question": "Favourite programming language?",
-                "published_at": "2015-08-05T08:40:51.620Z",
-                "choices": [
-                    {
-                        "choice": "Swift",
-                        "votes": 0
-                    }, {
-                        "choice": "Python",
-                        "votes": 0
-                    }, {
-                        "choice": "Objective-C",
-                        "votes": 0
-                    }, {
-                        "choice": "Ruby",
-                        "votes": 0
-                    }
-                ]
+                "corporateName": "4all Tecnologia",
+                "fantasy": "4all",
+                "cnpj": "23.483.494/0001-08", 
+                "ie": "654456468484",
+                "im": "54654",
+                "cnae": "6546454",
+                "idCity": 12346,
+                "neighborhood": "Bela Vista",
+                "street": "Furriel Luíz Antônio de Vargas",
+                "number": "250",
+                "complement": "Sala 1302",
+                "cep": "90470-130",
+                "email": "contato@4all.com",
+                "phone": "(51) 3021-2350",
+                "crt": "1",
+                "csc": "6031F6AF-2C4C-41F2-ACD5-D7E7781E15FA",
+                "token": 1,
+                "digital_certificate": "array de bytes do arquivo .pfx",
+            }        
+
++ Response 200 (application/json)
+
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }        
+            
+## Testar certificado digital [/4allNFe/store/testDigitalCertificate]
+
+### testDigitalCertificate[POST]
+                
+Método utilizado para testar um certificado digital (.pfx). Enviar o próprio arquivo e senha, geralmente o arquivo não tem mais do que 10K então o upload deve ser rápido.
+
+###### Regras:
+
++ Carregar o arquivo e verificar:
+    + Se está dentro da data de expiração
+    + Se possui um alias preenchido
+    + Não é necessário validar sessão nem nada, basta verificar o arquivo pra ver se é um arquivo suportável pelo sistema
+
++ Request (application/json)
+
+    + Body
+            
+            {
+                "digitalCertificate": "array de bytes do arquivo",
+                "password": "senha"
+            }        
+
++ Response 200 (application/json)
+
+    + Body
+    
+            {
+                "validity": "15/12/2018",
+                "alias": "dfafdasfasfasfasfsafasf"
+            }
+
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }        
+            
+## Baixar certificado digital [/4allNFe/store/downloadDigitalCertificate]
+
+### downloadDigitalCertificate[GET]
+                
+Método utilizado para baixar o arquivo do certificado digital configurado anteriormente.
+
+###### Regras:
+
++ Obter o código do EC através do hash de autorização no header da chamada HTTP.
++ Se existe um arquivo configurado retorna o arquivo
++ Se não existe retorna erro com mensagem adequada
+
++ Request (application/json)
+
+    + Headers
+            
+            authorization: código hash de autorização que identifica o EC (gerado no momento do login)
+
++ Response 200 (application/octet-stream)
+
++ Response 204 (application/json)
+
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }        
+
+# Group Controle de acesso
+
+Os métodos abaixo destinam-se a crição e manutenção dos usuários do sistema.
+
+## Cadastrar novo usuário [/4allNFe/user/newEntity]
+
+### newEntity[POST]
+                
+Método utilizado para criar um novo usuário do sistema.
+
+###### Regras:
+
++ Obter o código do EC através do hash de autorização no header da chamada HTTP.
++ Validar preenchimento dos campos.
++ Garantir que dentro de um mesmo EC não haja duplicidades de login.
++ Notificar o usuário por email de que uma conta foi criada
++ Incluir no email um link de habilitação do usuário, a intenção deste email é validar o email informado, pois o mesmo será usado para uma eventual recuperação de senha
++ Salvar o usuário por padrão desabilitado.
+
++ Request (application/json)
+
+    + Headers
+            
+            authorization: código hash de autorização que identifica o EC (gerado no momento do login)
+            
+    + Body
+    
+            {
+                "userName": "Pablo JS dos Santos",
+                "login": "pablo.santos",
+                "password": "******",
+                "email": "pablo.santos@4all.com"
+            }
+
++ Response 200 (application/json)
+
+    + Body
+    
+            {
+                "idUserAccount": 1
+            }
+
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }
+            
+## Buscar todos os usuários [/4allNFe/user/findAll]
+
+### findAll[POST]
+                
+Método utilizado para buscar os dados de todos os usuários cadastrados em um EC
+
+###### Regras:
+
++ Obter o código do EC através do hash de autorização no header da chamada HTTP.
+
++ Request (application/json)
+
+    + Headers
+            
+            authorization: código hash de autorização que identifica o EC (gerado no momento do login)
+
++ Response 200 (application/json)
+
+    + Body
+    
+            [
+                {
+                    "idUserAccount": 1,
+                    "userName": "Pablo JS dos Santos",
+                    "login": "pablo.santos",
+                    "email": "pablo.santos@4all.com",
+                    "enabled": true,
+                    "permissions": [1,2,3]
+                },
+                {
+                    "idUserAccount": 2,
+                    "userName": "Fulano de tal",
+                    "login": "fulano.tal",
+                    "email": "fulano.tal@4all.com",
+                    "enabled": false,
+                    "permissions": []
+                }
+            ]
+        
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }
+
+## Buscar dados de um usuário [/4allNFe/user/findOne/{login}]
+
+### findOne[GET]
+                
+Método utilizado para buscar os dados de um usuário específico
+
+###### Regras:
+
++ Obter o código do EC através do hash de autorização no header da chamada HTTP.
+
++ Parameters
+    + login - Nome de login do usuário
+
++ Request (application/json)
+
+    + Headers
+            
+            authorization: código hash de autorização que identifica o EC (gerado no momento do login)
+
++ Response 200 (application/json)
+
+    + Body
+            
+            {
+                "idUserAccount": 1,
+                "userName": "Pablo JS dos Santos",
+                "login": "pablo.santos",
+                "email": "pablo.santos@4all.com",
+                "enabled": true,
+                "permissions": [1,2,3]
+            }
+        
++ Response 204 (application/json)
+
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }
+            
+## Atualizar o cadastro de um usuário [/4allNFe/user/updateEntity]
+
+### updateEntity[PUT]
+                
+Método utilizado para atualizar os dados cadastrais de um usuário do sistema.
+
+###### Regras:
+
++ Obter o código do EC através do hash de autorização no header da chamada HTTP.
++ Validar o preenchimento dos campos
++ Notificar o usuário por email sobre as alterações
+
++ Request (application/json)
+
+    + Headers
+            
+            authorization: código hash de autorização que identifica o EC (gerado no momento do login)
+            
+    + Body
+            
+            {
+                "idUserAccount": 1,
+                "userName": "Pablo JS dos Santos",
+                "login": "pablo.santos",
+                "email": "pablo.santos@4all.com",
+                "enabled": true,
+                "permissions": [1,2,3]
+            }
+
++ Response 200 (application/json)
+
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }
+            
+## Atualizar senha de um usuário [/4allNFe/user/updatePassword]
+
+### updatePassword[PUT]
+                
+Método utilizado para atualizar a senha do usuário. Ideal que um usuário consiga atualizar apenas a sua própria senha, ou seja, ao fazer login no sistema só tenha uma opção para atualizar a senha do usuário logado.
+
+###### Regras:
+
++ Obter o código do EC e do usuário através do hash de autorização no header da chamada HTTP.
+
++ Request (application/json)
+
+    + Headers
+            
+            authorization: código hash de autorização que identifica o EC (gerado no momento do login)
+            
+    + Body
+            
+            {
+                "password": "*****"
+            }
+
++ Response 200 (application/json)
+
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }
+            
+## Resetar a senha de um usuário [/4allNFe/user/requestPasswordReset]
+
+### requestPasswordReset[POST]
+                
+Método utilizado para resetar a senha de um usuário. Esse método foi pensado para que seja possível um usuário resetar sua própria senha em caso de esquecimento.
+Essa operação seria feita na tela de login, de modo que ao solicitar a redefinição de senha esse usuário receba um email com um link de redirecionamento, que o enviará para uma tela onde será possível alterar a sua senha.
+
+###### Regras:
+
++ Enviar para o email do usuário um link que o redirecionará para a tela de alteração de senha
++ Esse link deverá conter o hash de autorização gerado no login, pois será necessário no método de atualização de senha
+
++ Request (application/json)
+            
+    + Body
+            
+            {
+                "ecCode": "código do EC",
+                "login": "pablo.santos"
+            }
+
++ Response 200 (application/json)
+
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }
+
+## Logar no sistema [/4allNFe/user/login]
+
+### login[POST]
+                
+Método utilizado para logar no sistema.
+
+###### Regras:
+
++ Validar se o EC existe
++ Validar se o EC está habilitado
++ Validar se o usuário existe
++ Validar se o usário está habilitado
++ Validar se a senha do usário confere
++ Gerar hash de autorização criptografado contendo o código do EC, o código do usuário e a data e hora do login
+
++ Request (application/json)
+            
+    + Body
+            
+            {
+                "ecCode": "código do EC",
+                "login": "pablo.santos",
+                "password": "*******"
+            }
+
++ Response 200 (application/json)
+
+    + Body
+            
+            {
+                "authorization": "Código hash de autorização"
+            }
+
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }
+            
+## Buscar todos os direitos de acesso disponíveis [/4allNFe/user/findAllPermissions]
+
+### findAllPermissions[GET]
+                
+Método utilizado para buscar todos os direitos de acesso existentes no sistema
+
++ Response 200 (application/json)
+
+    + Body
+            
+            [
+                {
+                    "idPermission": 1,
+                    "description": "Cancelar nota fiscal"
+                },
+                {
+                    "idPermission": 2,
+                    "description": "Cadastrar usuários"
+                },
+                {
+                    "idPermission": 3,
+                    "description": "Inutilizar faixa de numeração"
+                }
+            ]
+
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }
+
+## Validar direito de acesso [/4allNFe/user/checkPermission/{idPermission}]
+
+### checkPermission[GET]
+                
+Método utilizado para verificar se o usuário logado tem o direito necessário para realizar a ação solicitada.
+É esperado que esse método seja chamado antes de executar ações importantes, como cancelar uma NFe, inutilizar uma numeração ou acessar o cadastro de usuários.
+
+###### Regras:
+
++ Obter o código do EC e o código do usuário através do hash de autorização no header da chamada HTTP.
++ Verificar no banco de dados se o usuário da hash possui o direito solicitado
+
++ Parameters
+    + idPermission - Código do direito solicitado
+
++ Request (application/json)
+
+    + Headers
+            
+            authorization: código hash de autorização que identifica o EC (gerado no momento do login)
+
++ Response 200 (application/json)
+
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }
+
+
+# Group Configurações por série de documento fiscal
+
+Os métodos abaixo destinam-se a criar e manter as configurações de cada série de documento fiscal utilizada no sistema
+
+## Cadastrar nova série [/4allNFe/serie/newEntity]
+
+### newEntity[POST]
+                
+Método utilizado para criar uma nova série de documento fiscal.
+
+###### Regras:
+
++ Obter o código do EC através do hash de autorização no header da chamada HTTP.
++ Validar preenchimento dos campos.
++ Garantir que dentro de um mesmo EC não haja duplicidades de séries.
++ Criar um controle de numeração para a nova série
+
++ Request (application/json)
+
+    + Headers
+            
+            authorization: código hash de autorização que identifica o EC (gerado no momento do login)
+            
+    + Body
+    
+            {
+                "codMod": "55",
+                "serie": "1",
+                "environment": "1",
+                "dataVersion": "3.10",
+                "sendEmail": true,
+                "emailSubject": "Sua nota fiscal",
+                "emailText": "Prezado cliente, segue em anexo o seu documento fiscal eletrônico...",
+                "emailIncludePDF": true,
+                "zipEmailAttachments": true
+            }
+
++ Response 200 (application/json)
+
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }
+            
+## Atualizar uma série [/4allNFe/serie/updateEntity]
+
+### updateEntity[PUT]
+                
+Método utilizado para atualizar as configurações de uma série
+
+###### Regras:
+
++ Obter o código do EC através do hash de autorização no header da chamada HTTP.
++ Validar preenchimento dos campos.
++ Garantir que dentro de um mesmo EC não haja duplicidades de séries.
++ Não permitir que os campos "codMod" e "serie" sejam alterados
+
++ Request (application/json)
+
+    + Headers
+            
+            authorization: código hash de autorização que identifica o EC (gerado no momento do login)
+            
+    + Body
+    
+            {
+                "codMod": "55",
+                "serie": "1",
+                "environment": "1",
+                "dataVersion": "3.10",
+                "sendEmail": true,
+                "emailSubject": "Sua nota fiscal",
+                "emailText": "Prezado cliente, segue em anexo o seu documento fiscal eletrônico...",
+                "emailIncludePDF": true,
+                "zipEmailAttachments": true
+            }
+
++ Response 200 (application/json)
+
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }
+            
+## Atualizar numeração [/4allNFe/serie/updateCurrentNumber]
+
+### updateCurrentNumber[PUT]
+                
+Método utilizado para atualizar numeração sequencial de uma série
+
+###### Regras:
+
++ Obter o código do EC através do hash de autorização no header da chamada HTTP.
+
++ Request (application/json)
+
+    + Headers
+            
+            authorization: código hash de autorização que identifica o EC (gerado no momento do login)
+            
+    + Body
+    
+            {
+                "codMod": "55",
+                "serie": "1",
+                "currentNumber": 1234
+            }
+
++ Response 200 (application/json)
+            
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }
+
+## Buscar os dados de todas as séries [/4allNFe/serie/findAll]
+
+### findAll[GET]
+                
+Método utilizado para buscar todas as séries configuradas em um EC
+
+###### Regras:
+
++ Obter o código do EC através do hash de autorização no header da chamada HTTP.
+
++ Request (application/json)
+
+    + Headers
+            
+            authorization: código hash de autorização que identifica o EC (gerado no momento do login)
+
++ Response 200 (application/json)
+
+    + Body
+    
+            [
+                {
+                    "codMod": "55",
+                    "serie": "1",
+                    "environment": "1",
+                    "dataVersion": "3.10",
+                    "sendEmail": true,
+                    "emailSubject": "Sua nota fiscal",
+                    "emailText": "Prezado cliente, segue em anexo o seu documento fiscal eletrônico...",
+                    "emailIncludePDF": true,
+                    "zipEmailAttachments": true
+                },
+                {
+                    "codMod": "65",
+                    "serie": "1",
+                    "environment": "1",
+                    "dataVersion": "3.10",
+                    "sendEmail": true,
+                    "emailSubject": "Sua nota fiscal de consumidor eletrônica",
+                    "emailText": "Prezado cliente, segue em anexo o seu documento fiscal eletrônico...",
+                    "emailIncludePDF": true,
+                    "zipEmailAttachments": true
+                }
+            ]
+
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }
+
+## Buscar os dados de uma série [/4allNFe/serie/findOne/{codMod}/{serie}]
+
+### findOne[GET]
+                
+Método utilizado para buscar os dados de uma série específica
+
+###### Regras:
+
++ Obter o código do EC através do hash de autorização no header da chamada HTTP.
+
++ Parameters
+
+    + codMod - Código do modelo do documento fiscal
+    + serie - número da série
+
++ Request (application/json)
+
+    + Headers
+            
+            authorization: código hash de autorização que identifica o EC (gerado no momento do login)
+
++ Response 200 (application/json)
+
+    + Body
+    
+            {
+                "codMod": "55",
+                "serie": "1",
+                "environment": "1",
+                "dataVersion": "3.10",
+                "sendEmail": true,
+                "emailSubject": "Sua nota fiscal",
+                "emailText": "Prezado cliente, segue em anexo o seu documento fiscal eletrônico...",
+                "emailIncludePDF": true,
+                "zipEmailAttachments": true
+            }
+            
++ Response 204 (application/json)
+
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }
+
+# Group Notas fiscais
+
+Os métodos abaixo destinam-se a criar e manter os documentos fiscais do EC
+
+## Listar notas fiscais [/4allNFe/invoice/find{?firstEmissionDate,lastEmissionDate,codMod,serie,operationType,firstNumber,lastNumber,authorizationStatus}]
+
+### find[GET]
+                
+Método utilizado para filtrar e listar notas fiscais.
+
+###### Regras:
+
++ Obter o código do EC através do hash de autorização no header da chamada HTTP.
+
++ Parameters
+
+    + firstEmissionDate - Data inicial do intervalo
+    + lastEmissionDate - Data final do intervalo
+    + codMod - Código do modelo do documento fiscal
+    + serie - Número da série do documento
+    + operationType - Entrada ou Saída
+    + firstNumber - Número inicial do intervalo
+    + lastNumber - Número final do intervalo
+    + authorizationStatus - Status da autorização do documento fiscal
+
++ Request (application/json)
+
+    + Headers
+            
+            authorization: código hash de autorização que identifica o EC (gerado no momento do login)
+
++ Response 200 (application/json)
+
+    + Body
+    
+            [
+                {
+                    "idInvoice": 1,
+                    "codMod": "55",
+                    "serie": "1",
+                    "number": 216354,
+                    "key": "12345678901234567890123456789012345678901234",
+                    "emissionDate": "15/03/2014",
+                    "authorizationStatus": "1",
+                    "statusMessage": "Autorizado o uso da NFe",
+                    "destName": "Pablo JS dos Santos",
+                    "operationType": "2",
+                    "environment": "1",
+                    "vProd": 1456.12,
+                    "vDesc": 0.12,
+                    "vIcmsDeson": 54.0,
+                    "vST": 60.65,
+                    "vFCPST": 621.05,
+                    "vFrete": 10.0,
+                    "vSeg": 5.0,
+                    "vOutro": 45.0,
+                    "vII": 55.0,
+                    "vIPI": 0.35,
+                    "vIPIDevol": 54.0,
+                    "vServ": 0.0,
+                    "vNF": 21654.0,
+                    "vBC": 2156.0,
+                    "vICMS": 5555.33,
+                    "vBCST": 123.12,
+                    "vPIS": 555.55,
+                    "vCOFINS": 666.66,
+                    "vTotTrib": 1213.25,
+                },
+                {
+                    "idInvoice": 1,
+                    "codMod": "55",
+                    "serie": "1",
+                    "number": 2123,
+                    "key": "12345678901234567890123456789012345678901234",
+                    "emissionDate": "15/03/2014",
+                    "authorizationStatus": "1",
+                    "statusMessage": "Autorizado o uso da NFe",
+                    "destName": "Pablo JS dos Santos",
+                    "operationType": "2",
+                    "environment": "1",
+                    "vProd": 1456.12,
+                    "vDesc": 0.12,
+                    "vIcmsDeson": 54.0,
+                    "vST": 60.65,
+                    "vFCPST": 621.05,
+                    "vFrete": 10.0,
+                    "vSeg": 5.0,
+                    "vOutro": 45.0,
+                    "vII": 55.0,
+                    "vIPI": 0.35,
+                    "vIPIDevol": 54.0,
+                    "vServ": 0.0,
+                    "vNF": 21654.0,
+                    "vBC": 2156.0,
+                    "vICMS": 5555.33,
+                    "vBCST": 123.12,
+                    "vPIS": 555.55,
+                    "vCOFINS": 666.66,
+                    "vTotTrib": 1213.25,
+                }
+            ]
+
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }
+            
+## Imprimir notas fiscais [/4allNFe/invoice/print/{idInvoices}]
+
+### print[GET]
+                
+Método utilizado para gerar o PDF de uma ou mais notas fiscais
+
+###### Regras:
+
++ Obter o código do EC através do hash de autorização no header da chamada HTTP.
++ Se várias notas fiscais, mesclar o danfe de todas elas num único documento PDF, incluir cartas de correção
+
++ Parameters
+
+    + idInvoices - IDs das notas fiscais em um array, ex: [1,2,3]
+
++ Request (application/json)
+
+    + Headers
+            
+            authorization: código hash de autorização que identifica o EC (gerado no momento do login)
+
++ Response 200 (application/octet-stream)
+
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }
+
+## Baixar notas fiscais [/4allNFe/invoice/download/{fileType}/{idInvoices}]
+
+### download[GET]
+                
+Método utilizado para fazer o download de uma ou mais notas fiscais.
+
+###### Regras:
+
++ Obter o código do EC através do hash de autorização no header da chamada HTTP.
++ Se várias notas fiscais, zipar todos os arquivos para retornar um arquivo único
++ Se o formado do arquivo for um formato danfe, verificar a existencia de carta de correção, se houver incluir no arquivo
+
++ Parameters
+
+    + fileType - Formato de arquivo desejado (XML, PDF, PNG...)
+    + idInvoices - IDs das notas fiscais em um array, ex: [1,2,3]
+
++ Request (application/json)
+
+    + Headers
+            
+            authorization: código hash de autorização que identifica o EC (gerado no momento do login)
+
++ Response 200 (application/octet-stream)
+
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }
+
+## Sincronizar documentos com a SEFAZ [/4allNFe/invoice/synchronize]
+
+### synchronize[POST]
+                
+Método utilizado para sincronizar uma ou mais notas fiscais com a sefaz
+
+###### Regras:
+
++ Obter o código do EC através do hash de autorização no header da chamada HTTP.
++ Para cada nota fiscal:
+    + Primeiro consultar o status da nota na SEFAZ
+    + Se nota fiscal encontrada na SEFAZ
+        + Atualizar a nota fiscal no banco de dados conforme os dados recebidos da SEFAZ
+    + Se nota fiscal não encontrada na SEFAZ
+        + Se nota fiscal cancelada/inutilizada
+            + Não fazer nada
+        + Se não
+            + Tentar transmitir a nota fiscal e salvar o retorno
+
++ Request (application/json)
+
+    + Headers
+            
+            authorization: código hash de autorização que identifica o EC (gerado no momento do login)
+            
+    + Body
+    
+            {
+                "idInvoices": [1,2,3,4,5]
+            }
+
++ Response 200 (application/json)
+
+    + Body
+    
+            [
+                {
+                    "idInvoice": 1,
+                    "codMod": "55",
+                    "serie": "1",
+                    "number": 216354,
+                    "key": "12345678901234567890123456789012345678901234",
+                    "emissionDate": "15/03/2014",
+                    "authorizationStatus": "1",
+                    "statusMessage": "Autorizado o uso da NFe",
+                    "destName": "Pablo JS dos Santos",
+                    "operationType": "2",
+                    "environment": "1",
+                    "vProd": 1456.12,
+                    "vDesc": 0.12,
+                    "vIcmsDeson": 54.0,
+                    "vST": 60.65,
+                    "vFCPST": 621.05,
+                    "vFrete": 10.0,
+                    "vSeg": 5.0,
+                    "vOutro": 45.0,
+                    "vII": 55.0,
+                    "vIPI": 0.35,
+                    "vIPIDevol": 54.0,
+                    "vServ": 0.0,
+                    "vNF": 21654.0,
+                    "vBC": 2156.0,
+                    "vICMS": 5555.33,
+                    "vBCST": 123.12,
+                    "vPIS": 555.55,
+                    "vCOFINS": 666.66,
+                    "vTotTrib": 1213.25,
+                },
+                {
+                    "idInvoice": 2,
+                    "codMod": "55",
+                    "serie": "1",
+                    "number": 2123,
+                    "key": "12345678901234567890123456789012345678901234",
+                    "emissionDate": "15/03/2014",
+                    "authorizationStatus": "1",
+                    "statusMessage": "Autorizado o uso da NFe",
+                    "destName": "Pablo JS dos Santos",
+                    "operationType": "2",
+                    "environment": "1",
+                    "vProd": 1456.12,
+                    "vDesc": 0.12,
+                    "vIcmsDeson": 54.0,
+                    "vST": 60.65,
+                    "vFCPST": 621.05,
+                    "vFrete": 10.0,
+                    "vSeg": 5.0,
+                    "vOutro": 45.0,
+                    "vII": 55.0,
+                    "vIPI": 0.35,
+                    "vIPIDevol": 54.0,
+                    "vServ": 0.0,
+                    "vNF": 21654.0,
+                    "vBC": 2156.0,
+                    "vICMS": 5555.33,
+                    "vBCST": 123.12,
+                    "vPIS": 555.55,
+                    "vCOFINS": 666.66,
+                    "vTotTrib": 1213.25,
+                }
+            ]
+
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }
+            
+## Cancelar notas fiscais [/4allNFe/invoice/cancel]
+
+### cancel[POST]
+                
+Método utilizado para cancelar uma ou mais notas fiscais
+
+###### Regras:
+
++ Obter o código do EC através do hash de autorização no header da chamada HTTP.
++ Para cada nota fiscal:
+    + Se nota fiscal em status "não autorizada"
+        
+        
+        Inutilizar numeração na SEFAZ e registrar na tabela de numerações inutilizadas
+        
+    + Se nota fiscal em status "denegada"
+    
+        
+        Não fazer nada
+        
+    + Enviar solicitação de cancelamento para a SEFAZ
+        + Se SEFAZ cancelar a nota
+        
+        
+            Salvar de acordo
+
++ Request (application/json)
+
+    + Headers
+            
+            authorization: código hash de autorização que identifica o EC (gerado no momento do login)
+            
+    + Body
+    
+            {
+                "idInvoices": [1,2,3,4,5]
+            }
+
++ Response 200 (application/json)
+
+    + Body
+    
+            [
+                {
+                    "idInvoice": 1,
+                    "codMod": "55",
+                    "serie": "1",
+                    "number": 216354,
+                    "key": "12345678901234567890123456789012345678901234",
+                    "emissionDate": "15/03/2014",
+                    "authorizationStatus": "1",
+                    "statusMessage": "Autorizado o uso da NFe",
+                    "destName": "Pablo JS dos Santos",
+                    "operationType": "2",
+                    "environment": "1",
+                    "vProd": 1456.12,
+                    "vDesc": 0.12,
+                    "vIcmsDeson": 54.0,
+                    "vST": 60.65,
+                    "vFCPST": 621.05,
+                    "vFrete": 10.0,
+                    "vSeg": 5.0,
+                    "vOutro": 45.0,
+                    "vII": 55.0,
+                    "vIPI": 0.35,
+                    "vIPIDevol": 54.0,
+                    "vServ": 0.0,
+                    "vNF": 21654.0,
+                    "vBC": 2156.0,
+                    "vICMS": 5555.33,
+                    "vBCST": 123.12,
+                    "vPIS": 555.55,
+                    "vCOFINS": 666.66,
+                    "vTotTrib": 1213.25,
+                },
+                {
+                    "idInvoice": 2,
+                    "codMod": "55",
+                    "serie": "1",
+                    "number": 2123,
+                    "key": "12345678901234567890123456789012345678901234",
+                    "emissionDate": "15/03/2014",
+                    "authorizationStatus": "1",
+                    "statusMessage": "Autorizado o uso da NFe",
+                    "destName": "Pablo JS dos Santos",
+                    "operationType": "2",
+                    "environment": "1",
+                    "vProd": 1456.12,
+                    "vDesc": 0.12,
+                    "vIcmsDeson": 54.0,
+                    "vST": 60.65,
+                    "vFCPST": 621.05,
+                    "vFrete": 10.0,
+                    "vSeg": 5.0,
+                    "vOutro": 45.0,
+                    "vII": 55.0,
+                    "vIPI": 0.35,
+                    "vIPIDevol": 54.0,
+                    "vServ": 0.0,
+                    "vNF": 21654.0,
+                    "vBC": 2156.0,
+                    "vICMS": 5555.33,
+                    "vBCST": 123.12,
+                    "vPIS": 555.55,
+                    "vCOFINS": 666.66,
+                    "vTotTrib": 1213.25,
+                }
+            ]
+
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }
+            
+## Enviar documentos por E-Mail [/4allNFe/invoice/email]
+
+### email[POST]
+                
+Método utilizado para enviar uma ou mais notas fiscais por email
+
+###### Regras:
+
++ Obter o código do EC através do hash de autorização no header da chamada HTTP.
++ Se for para enviar para um destinatário específico
+        
+    Criar um email único contendo todas as notas
+    
+    + Se assunto/mensagem específicos não informados
+         
+        Usar assunto/mensagem padrão configurado
+    
+    + Para cada nota:
+    
+        Anexar XML
+        
+        + Se enviar PDF: 
+
+            Anexar danfe em PDF, incluir cartas de correção
+
++ Se for para enviar para o destinatário da NFe
+
+    Criar um email para cada NFe
+
++ Se zipar anexos 
+    
+    zipar os anexos antes de enviar, de modo a enviar 
+    um único arquivo ,zip
+
++ Request (application/json)
+
+    + Headers
+            
+            authorization: código hash de autorização que identifica o EC (gerado no momento do login)
+            
+    + Body
+    
+            {
+                "idInvoices": [1,2,3,4,5],
+                "destinatary": "pablo.santos@4all.com",
+                "subject": "Sua nota fiscal",
+                "message": "Segue em anexo a sua nota fiscal...",
+                "sendPDF": true,
+                "sendZip": true
+            }
+
++ Response 200 (application/json)
+
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }
+
+## Fazer upload de notas fiscais [/4allNFe/invoice/upload]
+
+### upload[POST]
+                
+Método utilizado para fazer upload de um ou multiplos arquivos XML de nota fiscal
+
+###### Regras:
+
++ Obter o código do EC através do hash de autorização no header da chamada HTTP.
++ Só permitir selecionar arquivos .xml
++ Para cada nota fiscal enviada:
+    
+    
+    + Ler o xml e extrair os dados necessários
+    + Verificar se a nota fiscal já existe no banco
+    + Se existir, verificar se o status da NF permite alteração
+
++ Request (multipart/form-data)
+
+    + Headers
+            
+            authorization: código hash de autorização que identifica o EC (gerado no momento do login)
+
++ Response 200 (application/json)
+
+    + Body
+    
+            [
+                {
+                    "idInvoice": 1,
+                    "codMod": "55",
+                    "serie": "1",
+                    "number": 216354,
+                    "key": "12345678901234567890123456789012345678901234",
+                    "emissionDate": "15/03/2014",
+                    "authorizationStatus": "1",
+                    "statusMessage": "Autorizado o uso da NFe",
+                    "destName": "Pablo JS dos Santos",
+                    "operationType": "2",
+                    "environment": "1",
+                    "vProd": 1456.12,
+                    "vDesc": 0.12,
+                    "vIcmsDeson": 54.0,
+                    "vST": 60.65,
+                    "vFCPST": 621.05,
+                    "vFrete": 10.0,
+                    "vSeg": 5.0,
+                    "vOutro": 45.0,
+                    "vII": 55.0,
+                    "vIPI": 0.35,
+                    "vIPIDevol": 54.0,
+                    "vServ": 0.0,
+                    "vNF": 21654.0,
+                    "vBC": 2156.0,
+                    "vICMS": 5555.33,
+                    "vBCST": 123.12,
+                    "vPIS": 555.55,
+                    "vCOFINS": 666.66,
+                    "vTotTrib": 1213.25,
+                },
+                {
+                    "idInvoice": 2,
+                    "codMod": "55",
+                    "serie": "1",
+                    "number": 2123,
+                    "key": "12345678901234567890123456789012345678901234",
+                    "emissionDate": "15/03/2014",
+                    "authorizationStatus": "1",
+                    "statusMessage": "Autorizado o uso da NFe",
+                    "destName": "Pablo JS dos Santos",
+                    "operationType": "2",
+                    "environment": "1",
+                    "vProd": 1456.12,
+                    "vDesc": 0.12,
+                    "vIcmsDeson": 54.0,
+                    "vST": 60.65,
+                    "vFCPST": 621.05,
+                    "vFrete": 10.0,
+                    "vSeg": 5.0,
+                    "vOutro": 45.0,
+                    "vII": 55.0,
+                    "vIPI": 0.35,
+                    "vIPIDevol": 54.0,
+                    "vServ": 0.0,
+                    "vNF": 21654.0,
+                    "vBC": 2156.0,
+                    "vICMS": 5555.33,
+                    "vBCST": 123.12,
+                    "vPIS": 555.55,
+                    "vCOFINS": 666.66,
+                    "vTotTrib": 1213.25,
+                }
+            ]
+            
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }
+
+## Emitir carta de correção [/4allNFe/invoice/correct]
+
+### correct[POST]
+                
+Método utilizado para emitir a carta de correção de uma NFe
+
+###### Regras:
+
++ Obter o código do EC através do hash de autorização no header da chamada HTTP.
++ Só permitir a emissão de carta de correção quando o modelo do documento fiscal for 55 (NFe)
++ Anexar XML do evento e retorno da SEFAZ no arquivo xml da nota fiscal
+
++ Request (application/json)
+
+    + Headers
+            
+            authorization: código hash de autorização que identifica o EC (gerado no momento do login)
+            
+    + Body
+    
+            {
+                "idInvoice": 1,
+                "message": "djfaçlfjasçfjasfjasdlfa"
+            }
+
++ Response 200 (application/json)
+            
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }
+
+## Localizar histórico de alterações [/4allNFe/invoice/findLogs/{idInvoice}]
+
+### findLogs[GET]
+                
+Método utilizado para listar os históricos de eventos e alterações de uma nota fiscal
+
+###### Regras:
+
++ Obter o código do EC através do hash de autorização no header da chamada HTTP.
+
++ Parameters
+    + idInvoice - Código da NF no servidor
+
++ Request (application/json)
+
+    + Headers
+            
+            authorization: código hash de autorização que identifica o EC (gerado no momento do login)
+
++ Response 200 (application/json)
+
+    + Body
+    
+            [
+                {
+                    "event": "Cancelamento",
+                    "occurrenceDateTime": "2016-12-26 16:32:21",
+                    "reason": "Teste nota fiscal em homologação",
+                    "user": "pablo.santos"
+                },
+                {
+                    "event": "Download",
+                    "occurrenceDateTime": "2016-12-26 16:32:21",
+                    "reason": "Arquivo baixado manualmente",
+                    "user": "pablo.santos"
+                }
+            ]
+            
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }
+
+## Enviar nota fiscal para autorização [/4allNFe/invoice/authorize]
+
+### authorize[POST]
+                
+Método utilizado para receber uma nota fiscal emitida em sistema de parceiros e transmitir para a SEFAZ. Não será utilizado na interface web.
+
+###### Regras:
+
++ Obter o código do EC através do hash de autorização no header da chamada HTTP.
++ Ver regras de validação do EC
++ Identificar o tipo de dado utilizado (XML, TXT, JSON...)
++ Converter os dados recebidos
++ Auto preencher os campos inexistentes conforme possibilidades
++ Verificar a existencia da nota fiscal
++ Checar o status da NFe na receita
++ Transmitir a nota
++ Armazenar o resultado
+
++ Request (application/json)
+
+    + Headers
+            
+            authorization: código hash de autorização que identifica o EC (gerado no momento do login)
+            
+    + Body
+    
+            {
+                "dataType": 1,
+                "data": "dados da nota fiscal"
+            }
+
++ Response 200 (application/json)
+
+    + Body
+    
+            {
+                "authorizationStatus": "00",
+                "xml": "arquivo xml da NFe/NFCe"
+            }
+            
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }
+
+## Localizar numerações inutilizadas [/4allNFe/invoice/findDisabled/{codMod}/{year}]
+
+### findDisabled[GET]
+                
+Método utilizado para listar numerações inutilizadas
+
+###### Regras:
+
++ Obter o código do EC através do hash de autorização no header da chamada HTTP.
+
++ Parameters
+    + codMod - Modelo do documento fiscal (55/65)
+    + year - Ano
+
++ Request (application/json)
+
+    + Headers
+            
+            authorization: código hash de autorização que identifica o EC (gerado no momento do login)
+
++ Response 200 (application/json)
+
+    + Body
+    
+            [
+                {
+                    "codMod": "55",
+                    "serie": "1",
+                    "year": 2016,
+                    "firstNumber": 468,
+                    "lastNumber": 500,
+                    "reason": "Numeração reservada..."
+                },
+                {
+                    "codMod": "65",
+                    "serie": "1",
+                    "year": 2016,
+                    "firstNumber": 123,
+                    "lastNumber": 123,
+                    "reason": "Numeração reservada..."
+                }
+            ]
+            
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
+            }
+
+## Inutilizar faixa de numeração [/4allNFe/invoice/disable]
+
+### disable[POST]
+                
+Método utilizado para inutilizar uma faixa qualquer de numeração. 
+
+###### Regras:
+
++ Obter o código do EC através do hash de autorização no header da chamada HTTP.
++ Método válido para documenos fiscais modelo 55 e 65
++ Consultar no banco, no cadastro do EC, as informações faltantes
+
++ Request (application/json)
+
+    + Headers
+            
+            authorization: código hash de autorização que identifica o EC (gerado no momento do login)
+            
+    + Body
+    
+            {
+                "codMod": "55",
+                "serie": "1",
+                "year": 2016,
+                "firstNumber": 468,
+                "lastNumber": 500,
+                "reason": "Numeração reservada..."
+            }
+
++ Response 200 (application/json)
+            
++ Response 500 (application/json)
+
+    + Body
+            
+            {
+                "message":"Breve descrição do erro ocorrido",
+                "stackTrace": "stacktrace completo do erro"
             }
